@@ -1,11 +1,3 @@
 __pycache__/
 *.pyc
-test_*.html
-*_preview.txt
-analysis_stats.json
 .claude/
-deploy.py
-deploy_type.py
-_d.py
-push.py
-restart_8089.py
