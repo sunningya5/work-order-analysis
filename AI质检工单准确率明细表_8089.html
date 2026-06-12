@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI质检工单准确率明细表</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f2f4f7;color:#1e293b;font-size:14px;min-width:1100px}
+.top-bar{background:#fff;padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.top-bar h1{font-size:16px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:10px}
+.top-bar h1 i{display:inline-block;width:4px;height:18px;background:#4f8cf7;border-radius:2px}
+.top-bar .info{font-size:12px;color:#94a3b8}
+
+.filter-bar{background:#fff;padding:12px 24px;display:flex;flex-wrap:wrap;gap:0 16px;align-items:flex-end;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.04);border:1px solid #e8ecf1;margin-bottom:16px}
+.filter-bar .filter-label{font-size:13px;font-weight:600;color:#334155;padding-bottom:10px;white-space:nowrap}
+.filter-bar .filter-sep{width:1px;height:24px;background:#e2e8f0;margin-bottom:8px;flex-shrink:0}
+.filter-bar .fg{display:flex;flex-direction:column;gap:2px}
+.filter-bar .fg label{font-size:11px;color:#8899aa;font-weight:500;white-space:nowrap}
+.filter-bar .fg-row{display:flex;align-items:center;gap:4px}
+.filter-bar .fg-row span{color:#c0c8d4;font-size:11px}
+.filter-bar .fg select,.filter-bar .fg input{padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#f8fafc;color:#334155;outline:none;transition:border-color .15s}
+.filter-bar .fg select{min-width:90px}
+.filter-bar .fg input[type=date]{width:115px}
+.filter-bar .fg select:focus,.filter-bar .fg input:focus{border-color:#4f8cf7;box-shadow:0 0 0 2px rgba(79,140,247,0.08)}
+.filter-bar .btn{padding:6px 14px;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:all .15s;white-space:nowrap;height:30px;margin-bottom:2px}
+.filter-bar .btn-primary{background:#4f8cf7;color:#fff} .filter-bar .btn-primary:hover{background:#3b7de6}
+.filter-bar .btn-outline{background:#fff;color:#64748b;border:1px solid #e2e8f0} .filter-bar .btn-outline:hover{background:#f8fafc;color:#334155}
+.filter-bar .btn-export{background:#fff;color:#4f8cf7;border:1px solid #e2e8f0;margin-left:auto} .filter-bar .btn-export:hover{background:#eef4ff;border-color:#4f8cf7}
+
+.container{max-width:1400px;margin:0 auto;padding:20px 24px}
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:#fff;padding:12px 10px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.04);text-align:center;border:1px solid #e8ecf1;transition:all .15s}
+.kpi-card:hover{box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.kpi-card .kpi-num{font-size:20px;font-weight:700;color:#1e293b}
+.kpi-card .kpi-label{font-size:11px;color:#8899aa;margin-bottom:6px}
+.kpi-split{display:flex;gap:8px}
+.kpi-half{flex:1;text-align:center}
+.kpi-val{font-size:22px;font-weight:700}
+.kpi-tag{font-size:10px;color:#94a3b8;margin-top:1px}
+
+.accu-panel{background:#fff;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.04);border:1px solid #e8ecf1;padding:16px 20px;margin-bottom:16px}
+.accu-title{font-size:14px;font-weight:600;color:#334155;margin-bottom:12px}
+.accu-row{display:flex;align-items:center;gap:20px}
+.accu-item{flex:1}
+.accu-label{font-size:11px;color:#8899aa;margin-bottom:6px}
+.accu-vals{display:flex;gap:16px}
+.accu-block{text-align:center}
+.accu-num{font-size:24px;font-weight:700}
+.accu-tag{font-size:10px;color:#94a3b8;margin-top:2px}
+.accu-divider{width:1px;height:50px;background:#e8ecf1;flex-shrink:0}
+
+.section-title{display:flex;align-items:center;gap:10px;font-size:15px;color:#1e293b;font-weight:600;margin-bottom:14px}
+.section-title i{display:inline-block;width:4px;height:16px;background:#4f8cf7;border-radius:2px;margin-right:4px}
+.type-card-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.tc{background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);cursor:pointer;transition:all .2s;border:1px solid #e8ecf1;text-align:center;position:relative;overflow:hidden}
+.tc:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(79,140,247,0.1);border-color:#4f8cf7}
+.tc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#e2e8f0}
+.tc .tcn{font-size:13px;font-weight:600;color:#334155;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.tci-detail-btn{font-size:10px;font-weight:400;color:#4f8cf7;cursor:pointer;padding:2px 8px;border:1px solid #dce3ed;border-radius:10px;transition:all .15s;white-space:nowrap}
+.tci-detail-btn:hover{background:#eef4ff;border-color:#4f8cf7}
+.tc .tca{font-size:28px;font-weight:700;line-height:1.2}
+.tc .tcd{font-size:11px;color:#94a3b8;margin-top:4px}
+.tc .tcr{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.tc .tcr span{font-size:11px;padding:3px 10px;border-radius:10px;background:#f1f5f9;color:#64748b;font-weight:500}
+
+.rules-wrap{background:#fff;border-radius:8px;padding:20px 24px;box-shadow:0 1px 2px rgba(0,0,0,0.04);border:1px solid #e8ecf1;margin-bottom:16px}
+.rules-wrap h4{font-size:14px;font-weight:600;color:#334155;margin-bottom:14px}
+.rc{display:flex;align-items:flex-start;gap:16px;padding:14px 0;border-bottom:1px solid #f1f5f9}
+.rc:last-child{border-bottom:none}
+.rc .rc-badge{min-width:80px;text-align:center}
+.rc .rc-badge span{display:inline-block;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;background:#f1f5f9;color:#4f8cf7}
+.rc .rc-body{flex:1;min-width:0}
+.rc .rc-body .rc-sub{font-size:12px;color:#64748b;margin-bottom:2px}
+.rc .rc-body .rc-desc{font-size:13px;color:#334155;line-height:1.5}
+.rc .rc-stats{font-size:11px;color:#94a3b8;margin-top:4px}
+.rc .rc-acc{text-align:right;min-width:70px}
+.rc .rc-acc .rc-pct{font-size:22px;font-weight:700}
+.rc .rc-acc .rc-label{font-size:11px;color:#94a3b8}
+
+.trend-wrap{background:#fff;border-radius:8px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,0.04);border:1px solid #e8ecf1;margin-bottom:16px}
+.trend-wrap h4{font-size:14px;font-weight:600;color:#334155;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.trend-toggle{display:inline-flex;background:#f1f5f9;border-radius:6px;overflow:hidden}
+.trend-toggle button{padding:5px 16px;border:none;font-size:12px;cursor:pointer;font-weight:500;background:transparent;color:#64748b;transition:all .15s}
+.trend-toggle button.active{background:#4f8cf7;color:#fff}
+
+.table-container{background:#fff;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.04);border:1px solid #e8ecf1;overflow:hidden}
+.table-header{padding:14px 20px;border-bottom:1px solid #e8ecf1;display:flex;justify-content:space-between;align-items:center}
+.table-header h3{font-size:14px;font-weight:600;color:#334155}
+.table-header .count{font-size:12px;color:#94a3b8}
+.table-wrap{overflow-x:auto;max-height:50vh;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+thead{position:sticky;top:0;z-index:10}
+th{background:#f8fafc;color:#475569;padding:10px 8px;text-align:left;font-weight:600;font-size:12px;border-bottom:2px solid #e2e8f0}
+td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
+tr:hover td{background:#f8fafc}
+.cell-responsible{color:#e05353;font-weight:600}
+.cell-not-responsible{color:#43a86e;font-weight:600}
+.pagination{padding:12px 20px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e8ecf1}
+.pagination button{padding:6px 14px;border:1px solid #e2e8f0;background:#fff;border-radius:4px;cursor:pointer;font-size:12px;color:#64748b}
+.pagination button:hover{background:#f8fafc}
+.pagination button.active{background:#4f8cf7;color:#fff;border-color:#4f8cf7}
+.pagination select{padding:6px 10px;border:1px solid #e2e8f0;border-radius:4px;font-size:12px}
+.no-data{text-align:center;padding:60px;color:#94a3b8}
+.back-btn{font-size:12px;color:#4f8cf7;cursor:pointer;display:none;font-weight:400}
+.back-btn:hover{text-decoration:underline}
+.footer{text-align:center;padding:16px;color:#94a3b8;font-size:12px}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div><h1><i></i>AI质检工单准确率明细表</h1></div>
+  <div class="info">数据: 2026-06-11 | 生成: 2026-06-11 18:28:32 | 总记录: <span id="totalCount">30</span></div>
+</div>
+<div class="filter-bar">
+  <span class="filter-label">筛选条件</span>
+  <span class="filter-sep"></span>
+  <div class="fg"><label>首次质检</label><div class="fg-row"><input type="date" id="filter_ai_qc_start" placeholder="起"><span>—</span><input type="date" id="filter_ai_qc_end" placeholder="止"></div></div>
+  <span class="filter-sep"></span>
+  <div class="fg"><label>结办时间</label><div class="fg-row"><input type="date" id="filter_close_start" placeholder="起"><span>—</span><input type="date" id="filter_close_end" placeholder="止"></div></div>
+  <span class="filter-sep"></span>
+  <div class="fg"><label>工单大类</label><select id="filter_big_category"><option value="全部">全部</option></select></div>
+  <div class="fg"><label>工单小类</label><select id="filter_small_category"><option value="全部">全部</option></select></div>
+  <div class="fg"><label>AI结果</label><select id="filter_ai_result"><option value="全部">全部</option><option value="有责">有责</option><option value="无责">无责</option></select></div>
+  <div class="fg"><label>复检</label><select id="filter_recheck"><option value="全部">全部</option><option value="是">是</option><option value="否">否</option></select></div>
+  <span class="filter-sep"></span>
+  <button class="btn btn-primary" onclick="applyFilters()">查询</button>
+  <button class="btn btn-outline" onclick="resetFilters()">重置</button>
+  <button class="btn btn-export" onclick="exportExcel()">导出</button>
+</div>
+<div class="container">
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="kpi-num" id="kpiTotal">30</div><div class="kpi-label">总工单数</div></div>
+    <div class="kpi-card"><div class="kpi-num" id="kpiResp" style="color:#e05353">12</div><div class="kpi-label">AI判定有责</div></div>
+    <div class="kpi-card"><div class="kpi-num" id="kpiNotResp" style="color:#43a86e">18</div><div class="kpi-label">AI判定无责</div></div>
+    <div class="kpi-card"><div class="kpi-num" id="kpiRecheck">12</div><div class="kpi-label">已复检</div></div>
+    <div class="kpi-card"><div class="kpi-label">首检正确率</div><div class="kpi-split"><div class="kpi-half" onclick="showAccTrend('首检','daily')" style="cursor:pointer"><div class="kpi-val" id="kpiFirstDay" style="color:#4f8cf7">-</div><div class="kpi-tag">当日 ▾</div></div><div class="kpi-half" onclick="showAccTrend('首检','monthly')" style="cursor:pointer"><div class="kpi-val" id="kpiFirstMonth" style="color:#689fdf">-</div><div class="kpi-tag">当月 ▾</div></div></div></div>
+    <div class="kpi-card"><div class="kpi-label">复检正确率</div><div class="kpi-split"><div class="kpi-half" onclick="showAccTrend('复检','daily')" style="cursor:pointer"><div class="kpi-val" id="kpiRecheckDay" style="color:#4f8cf7">-</div><div class="kpi-tag">当日 ▾</div></div><div class="kpi-half" onclick="showAccTrend('复检','monthly')" style="cursor:pointer"><div class="kpi-val" id="kpiRecheckMonth" style="color:#689fdf">-</div><div class="kpi-tag">当月 ▾</div></div></div></div>
+  </div>
+
+  <div class="section-title"><i></i>质检类型准确率 <span class="back-btn" id="backBtn" onclick="goBack()">← 返回总览</span></div>
+  <div class="type-card-grid" id="typeCardGrid"></div>
+  <div id="ruleCardArea" style="display:none"></div>
+  <div id="trendArea" style="display:none"></div>
+
+  <div class="table-container">
+    <div class="table-header"><h3>工单明细数据</h3><span class="count">显示 <span id="displayCount">0</span> 条</span></div>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>结办内容</th><th>被质检部门</th><th>工单号</th><th>运单号</th><th>工单大类</th><th>工单小类</th><th>工单环节</th><th>是否复检</th><th>AI质检总结果</th><th>首检总结果</th><th>复检总结果</th><th>首检有责规则数</th><th>复检有责规则数</th><th>AI有责规则数</th><th>工单创建日期</th><th>工单结办日期</th><th>AI质检日期</th><th>首检日期</th><th>复检日期</th><th>AI有责数</th><th>首检正确率</th><th>复检正确率</th></tr></thead><tbody id="tableBody"></tbody></table></div>
+    <div class="pagination">
+      <span style="font-size:12px;color:#94a3b8">第 <span id="pageNum">1</span> / <span id="pageTotal">1</span> 页</span>
+      <div style="display:flex;gap:4px"><button onclick="goPage(1)">首页</button><button onclick="goPage(currentPage-1)">上一页</button><span id="pageBtns"></span><button onclick="goPage(currentPage+1)">下一页</button><button onclick="goPage(pageTotal)">末页</button></div>
+      <select onchange="changePageSize(this.value)"><option value="20">20条/页</option><option value="50">50条/页</option><option value="100">100条/页</option></select>
+    </div>
+  </div>
+</div>
+<div class="footer">AI质检工单准确率分析 | 2026-06-11 18:28:32</div>
+
+<script>
+const ALL_DATA=[{"结办内容": "货物已派送签收", "被质检部门": "成都高新网点", "工单号": "Y2056390770691", "运单号": "W2055496360081", "工单大类": "操作类", "工单小类": "开单问题", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "3", "复检有责规则数": "0", "AI有责规则数": "3", "工单创建日期": "2026-06-10 18:28:32", "工单结办日期": "2026-06-11 01:28:32", "AI质检日期": "2026-06-11 16:28:32", "首检日期": "2026-06-13 11:28:32", "复检日期": "", "AI有责数": "3", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "核实在中转延误已催促", "被质检部门": "北京朝阳网点", "工单号": "Y2056695614415", "运单号": "W2055438175028", "工单大类": "时效类", "工单小类": "回单延误", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "2", "复检有责规则数": "0", "AI有责规则数": "2", "工单创建日期": "2026-05-15 18:28:32", "工单结办日期": "2026-05-18 09:28:32", "AI质检日期": "2026-05-16 02:28:32", "首检日期": "2026-05-17 00:28:32", "复检日期": "", "AI有责数": "2", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "已联系客户解释收费", "被质检部门": "广东省区", "工单号": "Y2056272552610", "运单号": "W2055418019332", "工单大类": "时效类", "工单小类": "派件延误", "工单环节": "省区环节", "是否复检": "是", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "无责", "首检有责规则数": "1", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-31 18:28:32", "工单结办日期": "2026-06-01 03:28:32", "AI质检日期": "2026-06-01 05:28:32", "首检日期": "2026-06-01 23:28:32", "复检日期": "2026-06-02 10:28:32", "AI有责数": "0", "首检正确率": "0.00%", "复检正确率": ""}, {"结办内容": "货物遗失已上报理赔", "被质检部门": "广州分拨中心", "工单号": "Y2056670916578", "运单号": "112822722094", "工单大类": "时效类", "工单小类": "发件延误", "工单环节": "分拨环节", "是否复检": "是", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "有责", "首检有责规则数": "2", "复检有责规则数": "2", "AI有责规则数": "2", "工单创建日期": "2026-06-09 18:28:32", "工单结办日期": "2026-06-11 15:28:32", "AI质检日期": "2026-06-10 02:28:32", "首检日期": "2026-06-11 01:28:32", "复检日期": "2026-06-12 15:28:32", "AI有责数": "2", "首检正确率": "100.00%", "复检正确率": "100.00%"}, {"结办内容": "已更改运单信息", "被质检部门": "北京朝阳网点", "工单号": "Y2056548469222", "运单号": "112827750764", "工单大类": "服务类", "工单小类": "工作推诿", "工单环节": "网点环节", "是否复检": "是", "AI质检总结果": "有责", "首检总结果": "有责", "复检总结果": "无责", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-06-05 18:28:32", "工单结办日期": "2026-06-07 23:28:32", "AI质检日期": "2026-06-05 22:28:32", "首检日期": "2026-06-07 05:28:32", "复检日期": "2026-06-08 07:28:32", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "投诉不属实正常时效内派送", "被质检部门": "成都高新网点", "工单号": "Y2056987059227", "运单号": "W2055712286237", "工单大类": "服务类", "工单小类": "工作推诿", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "3", "复检有责规则数": "0", "AI有责规则数": "2", "工单创建日期": "2026-05-13 18:28:32", "工单结办日期": "2026-05-16 04:28:32", "AI质检日期": "2026-05-14 15:28:32", "首检日期": "2026-05-14 22:28:32", "复检日期": "", "AI有责数": "2", "首检正确率": "66.67%", "复检正确率": ""}, {"结办内容": "已重新安排揽收", "被质检部门": "湖北省区", "工单号": "Y2056819024776", "运单号": "112879062973", "工单大类": "操作类", "工单小类": "开单问题", "工单环节": "省区环节", "是否复检": "是", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "无责", "首检有责规则数": "1", "复检有责规则数": "2", "AI有责规则数": "1", "工单创建日期": "2026-06-03 18:28:32", "工单结办日期": "2026-06-03 22:28:32", "AI质检日期": "2026-06-04 01:28:32", "首检日期": "2026-06-04 08:28:32", "复检日期": "2026-06-05 14:28:32", "AI有责数": "1", "首检正确率": "100.00%", "复检正确率": "50.00%"}, {"结办内容": "客户要求拒收退货", "被质检部门": "成都高新网点", "工单号": "Y2056107654909", "运单号": "112847814054", "工单大类": "时效类", "工单小类": "派件延误", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "有责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-13 18:28:32", "工单结办日期": "2026-05-16 05:28:32", "AI质检日期": "2026-05-14 14:28:32", "首检日期": "2026-05-15 03:28:32", "复检日期": "", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "核实服务态度问题已处罚", "被质检部门": "上海浦东网点", "工单号": "Y2056447262390", "运单号": "112859905866", "工单大类": "服务类", "工单小类": "虚假签收", "工单环节": "网点环节", "是否复检": "是", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "无责", "首检有责规则数": "1", "复检有责规则数": "1", "AI有责规则数": "1", "工单创建日期": "2026-05-22 18:28:32", "工单结办日期": "2026-05-24 15:28:32", "AI质检日期": "2026-05-23 00:28:32", "首检日期": "2026-05-24 09:28:32", "复检日期": "2026-05-27 08:28:32", "AI有责数": "1", "首检正确率": "100.00%", "复检正确率": "100.00%"}, {"结办内容": "货物到达目的网点通知提货", "被质检部门": "成都分拨中心", "工单号": "Y2056275127900", "运单号": "W2055490382227", "工单大类": "服务类", "工单小类": "虚假签收", "工单环节": "分拨环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "3", "复检有责规则数": "0", "AI有责规则数": "3", "工单创建日期": "2026-05-27 18:28:32", "工单结办日期": "2026-05-30 06:28:32", "AI质检日期": "2026-05-28 00:28:32", "首检日期": "2026-05-28 17:28:32", "复检日期": "", "AI有责数": "3", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "货物已派送签收", "被质检部门": "成都分拨中心", "工单号": "Y2056690647936", "运单号": "112893494666", "工单大类": "服务类", "工单小类": "乱收费", "工单环节": "分拨环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "1", "复检有责规则数": "0", "AI有责规则数": "1", "工单创建日期": "2026-06-04 18:28:32", "工单结办日期": "2026-06-06 10:28:32", "AI质检日期": "2026-06-05 12:28:32", "首检日期": "2026-06-07 05:28:32", "复检日期": "", "AI有责数": "1", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "核实在中转延误已催促", "被质检部门": "江苏省区", "工单号": "Y2056499873327", "运单号": "112842797855", "工单大类": "时效类", "工单小类": "中转延误", "工单环节": "省区环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-18 18:28:32", "工单结办日期": "2026-05-21 07:28:32", "AI质检日期": "2026-05-19 11:28:32", "首检日期": "2026-05-19 14:28:32", "复检日期": "", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "已联系客户解释收费", "被质检部门": "广东省区", "工单号": "Y2056557109331", "运单号": "W2055139501026", "工单大类": "服务类", "工单小类": "虚假签收", "工单环节": "省区环节", "是否复检": "否", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "4", "复检有责规则数": "0", "AI有责规则数": "3", "工单创建日期": "2026-05-19 18:28:32", "工单结办日期": "2026-05-21 07:28:32", "AI质检日期": "2026-05-20 00:28:32", "首检日期": "2026-05-21 17:28:32", "复检日期": "", "AI有责数": "3", "首检正确率": "75.00%", "复检正确率": ""}, {"结办内容": "货物遗失已上报理赔", "被质检部门": "广州天河网点", "工单号": "Y2056177633091", "运单号": "W2055423839252", "工单大类": "服务类", "工单小类": "虚假签收", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "1", "复检有责规则数": "0", "AI有责规则数": "1", "工单创建日期": "2026-05-14 18:28:32", "工单结办日期": "2026-05-16 12:28:32", "AI质检日期": "2026-05-14 22:28:32", "首检日期": "2026-05-16 08:28:32", "复检日期": "", "AI有责数": "1", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "已更改运单信息", "被质检部门": "广州天河网点", "工单号": "Y2056891967770", "运单号": "W2055529833492", "工单大类": "服务类", "工单小类": "拒绝上门/上楼", "工单环节": "网点环节", "是否复检": "是", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "有责", "首检有责规则数": "0", "复检有责规则数": "1", "AI有责规则数": "0", "工单创建日期": "2026-05-30 18:28:32", "工单结办日期": "2026-06-01 22:28:32", "AI质检日期": "2026-05-31 16:28:32", "首检日期": "2026-06-01 01:28:32", "复检日期": "2026-06-02 07:28:32", "AI有责数": "0", "首检正确率": "", "复检正确率": "0.00%"}, {"结办内容": "投诉不属实正常时效内派送", "被质检部门": "湖北省区", "工单号": "Y2056975866588", "运单号": "112846998516", "工单大类": "时效类", "工单小类": "中转延误", "工单环节": "省区环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-26 18:28:32", "工单结办日期": "2026-05-27 12:28:32", "AI质检日期": "2026-05-27 06:28:32", "首检日期": "2026-05-28 11:28:32", "复检日期": "", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "已重新安排揽收", "被质检部门": "上海浦东网点", "工单号": "Y2056534378710", "运单号": "112889348896", "工单大类": "服务类", "工单小类": "拒绝上门/上楼", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "1", "复检有责规则数": "0", "AI有责规则数": "1", "工单创建日期": "2026-05-23 18:28:32", "工单结办日期": "2026-05-26 10:28:32", "AI质检日期": "2026-05-24 15:28:32", "首检日期": "2026-05-26 00:28:32", "复检日期": "", "AI有责数": "1", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "客户要求拒收退货", "被质检部门": "上海浦东网点", "工单号": "Y2056686784136", "运单号": "W2055997265909", "工单大类": "服务类", "工单小类": "服务态度差", "工单环节": "网点环节", "是否复检": "是", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "无责", "首检有责规则数": "3", "复检有责规则数": "3", "AI有责规则数": "3", "工单创建日期": "2026-05-16 18:28:32", "工单结办日期": "2026-05-16 21:28:32", "AI质检日期": "2026-05-17 11:28:32", "首检日期": "2026-05-19 04:28:32", "复检日期": "2026-05-20 16:28:32", "AI有责数": "3", "首检正确率": "100.00%", "复检正确率": "100.00%"}, {"结办内容": "核实服务态度问题已处罚", "被质检部门": "广东省区", "工单号": "Y2056318049165", "运单号": "112874447435", "工单大类": "操作类", "工单小类": "开单问题", "工单环节": "省区环节", "是否复检": "是", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "有责", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-23 18:28:32", "工单结办日期": "2026-05-26 12:28:32", "AI质检日期": "2026-05-24 02:28:32", "首检日期": "2026-05-26 01:28:32", "复检日期": "2026-05-26 20:28:32", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "货物到达目的网点通知提货", "被质检部门": "北京朝阳网点", "工单号": "Y2056411817029", "运单号": "W2055259267818", "工单大类": "服务类", "工单小类": "拒绝上门/上楼", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "有责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-14 18:28:32", "工单结办日期": "2026-05-15 17:28:32", "AI质检日期": "2026-05-15 16:28:32", "首检日期": "2026-05-17 11:28:32", "复检日期": "", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "货物已派送签收", "被质检部门": "上海浦东网点", "工单号": "Y2056670137231", "运单号": "W2055170009467", "工单大类": "时效类", "工单小类": "中转延误", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "3", "复检有责规则数": "0", "AI有责规则数": "3", "工单创建日期": "2026-05-23 18:28:32", "工单结办日期": "2026-05-25 18:28:32", "AI质检日期": "2026-05-23 21:28:32", "首检日期": "2026-05-25 14:28:32", "复检日期": "", "AI有责数": "3", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "核实在中转延误已催促", "被质检部门": "浙江省区", "工单号": "Y2056809587577", "运单号": "W2055926146542", "工单大类": "操作类", "工单小类": "电话无人接听", "工单环节": "省区环节", "是否复检": "是", "AI质检总结果": "无责", "首检总结果": "有责", "复检总结果": "无责", "首检有责规则数": "1", "复检有责规则数": "2", "AI有责规则数": "1", "工单创建日期": "2026-06-03 18:28:32", "工单结办日期": "2026-06-04 07:28:32", "AI质检日期": "2026-06-04 15:28:32", "首检日期": "2026-06-04 17:28:32", "复检日期": "2026-06-07 06:28:32", "AI有责数": "1", "首检正确率": "100.00%", "复检正确率": "50.00%"}, {"结办内容": "已联系客户解释收费", "被质检部门": "上海浦东网点", "工单号": "Y2056555149199", "运单号": "W2055133698788", "工单大类": "时效类", "工单小类": "回单延误", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "3", "复检有责规则数": "0", "AI有责规则数": "3", "工单创建日期": "2026-05-21 18:28:32", "工单结办日期": "2026-05-24 14:28:32", "AI质检日期": "2026-05-22 06:28:32", "首检日期": "2026-05-23 09:28:32", "复检日期": "", "AI有责数": "3", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "货物遗失已上报理赔", "被质检部门": "广东省区", "工单号": "Y2056513623907", "运单号": "112882807712", "工单大类": "操作类", "工单小类": "开单问题", "工单环节": "省区环节", "是否复检": "否", "AI质检总结果": "有责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "1", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-31 18:28:32", "工单结办日期": "2026-06-01 11:28:32", "AI质检日期": "2026-06-01 10:28:32", "首检日期": "2026-06-02 08:28:32", "复检日期": "", "AI有责数": "0", "首检正确率": "0.00%", "复检正确率": ""}, {"结办内容": "已更改运单信息", "被质检部门": "广州分拨中心", "工单号": "Y2056799798019", "运单号": "112844654999", "工单大类": "时效类", "工单小类": "发件延误", "工单环节": "分拨环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-17 18:28:32", "工单结办日期": "2026-05-17 20:28:32", "AI质检日期": "2026-05-17 23:28:32", "首检日期": "2026-05-19 21:28:32", "复检日期": "", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "投诉不属实正常时效内派送", "被质检部门": "上海浦东网点", "工单号": "Y2056922335076", "运单号": "112814035851", "工单大类": "服务类", "工单小类": "服务态度差", "工单环节": "网点环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "", "首检有责规则数": "2", "复检有责规则数": "0", "AI有责规则数": "2", "工单创建日期": "2026-06-11 18:28:32", "工单结办日期": "2026-06-13 04:28:32", "AI质检日期": "2026-06-12 13:28:32", "首检日期": "2026-06-14 09:28:32", "复检日期": "", "AI有责数": "2", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "已重新安排揽收", "被质检部门": "北京朝阳网点", "工单号": "Y2056145932658", "运单号": "W2055607514051", "工单大类": "服务类", "工单小类": "虚假签收", "工单环节": "网点环节", "是否复检": "是", "AI质检总结果": "有责", "首检总结果": "有责", "复检总结果": "无责", "首检有责规则数": "0", "复检有责规则数": "0", "AI有责规则数": "0", "工单创建日期": "2026-05-17 18:28:32", "工单结办日期": "2026-05-18 03:28:32", "AI质检日期": "2026-05-18 04:28:32", "首检日期": "2026-05-19 07:28:32", "复检日期": "2026-05-20 20:28:32", "AI有责数": "0", "首检正确率": "", "复检正确率": ""}, {"结办内容": "客户要求拒收退货", "被质检部门": "广州分拨中心", "工单号": "Y2056603011990", "运单号": "112872976036", "工单大类": "服务类", "工单小类": "工作推诿", "工单环节": "分拨环节", "是否复检": "是", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "有责", "首检有责规则数": "3", "复检有责规则数": "2", "AI有责规则数": "2", "工单创建日期": "2026-06-09 18:28:32", "工单结办日期": "2026-06-11 20:28:32", "AI质检日期": "2026-06-09 21:28:32", "首检日期": "2026-06-11 10:28:32", "复检日期": "2026-06-12 13:28:32", "AI有责数": "2", "首检正确率": "66.67%", "复检正确率": "100.00%"}, {"结办内容": "核实服务态度问题已处罚", "被质检部门": "成都分拨中心", "工单号": "Y2056146547339", "运单号": "112824573458", "工单大类": "时效类", "工单小类": "中转延误", "工单环节": "分拨环节", "是否复检": "否", "AI质检总结果": "无责", "首检总结果": "有责", "复检总结果": "", "首检有责规则数": "3", "复检有责规则数": "0", "AI有责规则数": "3", "工单创建日期": "2026-05-21 18:28:32", "工单结办日期": "2026-05-22 08:28:32", "AI质检日期": "2026-05-22 13:28:32", "首检日期": "2026-05-24 02:28:32", "复检日期": "", "AI有责数": "3", "首检正确率": "100.00%", "复检正确率": ""}, {"结办内容": "货物到达目的网点通知提货", "被质检部门": "成都高新网点", "工单号": "Y2056347212966", "运单号": "112888507230", "工单大类": "服务类", "工单小类": "拒绝上门/上楼", "工单环节": "网点环节", "是否复检": "是", "AI质检总结果": "无责", "首检总结果": "无责", "复检总结果": "无责", "首检有责规则数": "1", "复检有责规则数": "1", "AI有责规则数": "1", "工单创建日期": "2026-05-20 18:28:32", "工单结办日期": "2026-05-21 11:28:32", "AI质检日期": "2026-05-21 01:28:32", "首检日期": "2026-05-22 23:28:32", "复检日期": "2026-05-25 07:28:32", "AI有责数": "1", "首检正确率": "100.00%", "复检正确率": "100.00%"}],COLUMNS=["结办内容", "被质检部门", "工单号", "运单号", "工单大类", "工单小类", "工单环节", "是否复检", "AI质检总结果", "首检总结果", "复检总结果", "首检有责规则数", "复检有责规则数", "AI有责规则数", "工单创建日期", "工单结办日期", "AI质检日期", "首检日期", "复检日期", "AI有责数", "首检正确率", "复检正确率"],TYPE_STATS={"虚假回访": {"correct": 5, "incorrect": 4, "total": 9, "accuracy": 55.56, "rule_details": {"20": {"correct": 3, "incorrect": 1, "total": 4, "accuracy": 75.0, "sub": "未回访客户", "desc": "未查询到回电回访电话的云呼"}, "21": {"correct": 1, "incorrect": 2, "total": 3, "accuracy": 33.33, "sub": "未在规定时间内回访客户", "desc": "需在规定时间内回访客户"}, "22": {"correct": 1, "incorrect": 1, "total": 2, "accuracy": 50.0, "sub": "省区回访客户无人接听时 未联系第二通", "desc": "首次外呼未接通，需间隔 30分钟开展二次回访，需持续跟进直至客户接通"}}, "monthly": [{"month": "2025-12", "accuracy": 43.26}, {"month": "2026-01", "accuracy": 58.41}, {"month": "2026-02", "accuracy": 58.8}, {"month": "2026-03", "accuracy": 53.29}, {"month": "2026-04", "accuracy": 56.86}, {"month": "2026-06", "accuracy": 63.98}], "daily": [{"day": "05-13", "accuracy": 52.42}, {"day": "05-14", "accuracy": 61.13}, {"day": "05-15", "accuracy": 58.65}, {"day": "05-16", "accuracy": 54.08}, {"day": "05-17", "accuracy": 54.56}, {"day": "05-18", "accuracy": 53.77}, {"day": "05-19", "accuracy": 58.88}, {"day": "05-20", "accuracy": 61.47}, {"day": "05-21", "accuracy": 55.65}, {"day": "05-22", "accuracy": 56.33}, {"day": "05-23", "accuracy": 58.75}, {"day": "05-24", "accuracy": 58.73}, {"day": "05-25", "accuracy": 55.14}, {"day": "05-26", "accuracy": 52.0}, {"day": "05-27", "accuracy": 55.7}, {"day": "05-28", "accuracy": 60.02}, {"day": "05-29", "accuracy": 55.67}, {"day": "05-30", "accuracy": 58.83}, {"day": "05-31", "accuracy": 55.03}, {"day": "06-01", "accuracy": 53.36}, {"day": "06-02", "accuracy": 56.18}, {"day": "06-03", "accuracy": 57.3}, {"day": "06-04", "accuracy": 55.69}, {"day": "06-05", "accuracy": 63.43}, {"day": "06-06", "accuracy": 54.7}, {"day": "06-07", "accuracy": 59.95}, {"day": "06-08", "accuracy": 61.0}, {"day": "06-09", "accuracy": 54.18}, {"day": "06-10", "accuracy": 62.4}, {"day": "06-11", "accuracy": 57.97}]}, "随意建单": {"correct": 0, "incorrect": 5, "total": 5, "accuracy": 0.0, "rule_details": {"1": {"correct": 0, "incorrect": 1, "total": 1, "accuracy": 0.0, "sub": "建错责任部门", "desc": "随意建单：网点建单错误（实际非此单号问题/任务部门选择错误）"}, "2": {"correct": 0, "incorrect": 2, "total": 2, "accuracy": 0.0, "sub": "建单类型错误", "desc": "随意建单：建单类型错误"}, "3": {"correct": 0, "incorrect": 1, "total": 1, "accuracy": 0.0, "sub": "重复建单", "desc": "随意建单：已有处理结果不可重复投诉建单"}, "4": {"correct": 0, "incorrect": 1, "total": 1, "accuracy": 0.0, "sub": "网点自建单预留号码错误", "desc": "随意建单：自建单需预留建单网点号码"}}, "monthly": [{"month": "2025-12", "accuracy": 23.53}, {"month": "2026-01", "accuracy": 12.8}, {"month": "2026-02", "accuracy": 17.95}, {"month": "2026-03", "accuracy": 29.5}, {"month": "2026-04", "accuracy": 26.07}, {"month": "2026-06", "accuracy": 12.09}], "daily": [{"day": "05-13", "accuracy": 17.19}, {"day": "05-14", "accuracy": 23.19}, {"day": "05-15", "accuracy": 14.56}, {"day": "05-16", "accuracy": 15.99}, {"day": "05-17", "accuracy": 15.14}, {"day": "05-18", "accuracy": 16.35}, {"day": "05-19", "accuracy": 17.76}, {"day": "05-20", "accuracy": 16.36}, {"day": "05-21", "accuracy": 22.65}, {"day": "05-22", "accuracy": 22.56}, {"day": "05-23", "accuracy": 24.16}, {"day": "05-24", "accuracy": 21.45}, {"day": "05-25", "accuracy": 19.73}, {"day": "05-26", "accuracy": 23.59}, {"day": "05-27", "accuracy": 17.26}, {"day": "05-28", "accuracy": 21.13}, {"day": "05-29", "accuracy": 20.11}, {"day": "05-30", "accuracy": 18.62}, {"day": "05-31", "accuracy": 14.75}, {"day": "06-01", "accuracy": 18.0}, {"day": "06-02", "accuracy": 20.62}, {"day": "06-03", "accuracy": 17.78}, {"day": "06-04", "accuracy": 18.88}, {"day": "06-05", "accuracy": 21.92}, {"day": "06-06", "accuracy": 23.65}, {"day": "06-07", "accuracy": 18.74}, {"day": "06-08", "accuracy": 23.33}, {"day": "06-09", "accuracy": 22.7}, {"day": "06-10", "accuracy": 21.05}, {"day": "06-11", "accuracy": 22.11}]}, "虚假处理": {"correct": 5, "incorrect": 17, "total": 22, "accuracy": 22.73, "rule_details": {"8": {"correct": 4, "incorrect": 8, "total": 12, "accuracy": 33.33, "sub": "未有结果结办工单", "desc": "虚假处理：未有结果结办工单，需有结果方可结办工单（对客诉问题做出有针对性的处理回复，例如：××时间派送/中转/揽收开单等一系列问题；错误录入内容：正在核实/对接中/处理中/XXX等无明确处理结果内容）"}, "9_1": {"correct": 0, "incorrect": 0, "total": 0, "accuracy": null, "sub": "工单处理结果未回复客户", "desc": "虚假处理：工单处理结果未回复客户（工单结办需回电回访电话栏登记的号码）"}, "9_2": {"correct": 0, "incorrect": 0, "total": 0, "accuracy": null, "sub": "工单处理结果未回复客户", "desc": "虚假处理：工单处理结果未回复客户（工单结办需回电回访电话栏登记的号码）"}, "10": {"correct": 0, "incorrect": 2, "total": 2, "accuracy": 0.0, "sub": "承诺未兑现", "desc": "虚假处理：承诺未兑现，承诺中转时间范围内，中转路由未更新"}, "11": {"correct": 1, "incorrect": 1, "total": 2, "accuracy": 50.0, "sub": "承诺未兑现", "desc": "虚假处理：承诺未兑现，承诺派送时间范围内，无签收记录。"}, "12": {"correct": 0, "incorrect": 0, "total": 0, "accuracy": null, "sub": "承诺未兑现", "desc": "虚假处理：承诺未兑现，承诺揽收无开单记录"}, "13": {"correct": 0, "incorrect": 1, "total": 1, "accuracy": 0.0, "sub": "承诺未兑现", "desc": "虚假处理：承诺未兑现，实际未查询到上报记录"}, "14": {"correct": 0, "incorrect": 0, "total": 0, "accuracy": null, "sub": "承诺未兑现", "desc": "承诺未兑现，结办内容反馈已改单，实际未查询到改单记录"}, "15": {"correct": 0, "incorrect": 5, "total": 5, "accuracy": 0.0, "sub": "虚假响应", "desc": "时效要求内首次响应客户告知投诉处理进度，电话响应需有效响应（没查询到响应的云呼记录）"}}, "monthly": [{"month": "2025-12", "accuracy": 11.08}, {"month": "2026-01", "accuracy": 23.89}, {"month": "2026-02", "accuracy": 25.15}, {"month": "2026-03", "accuracy": 22.91}, {"month": "2026-04", "accuracy": 16.91}, {"month": "2026-06", "accuracy": 19.17}], "daily": [{"day": "05-13", "accuracy": 20.82}, {"day": "05-14", "accuracy": 23.14}, {"day": "05-15", "accuracy": 19.34}, {"day": "05-16", "accuracy": 20.2}, {"day": "05-17", "accuracy": 24.89}, {"day": "05-18", "accuracy": 22.54}, {"day": "05-19", "accuracy": 18.23}, {"day": "05-20", "accuracy": 20.27}, {"day": "05-21", "accuracy": 18.72}, {"day": "05-22", "accuracy": 20.06}, {"day": "05-23", "accuracy": 18.84}, {"day": "05-24", "accuracy": 17.23}, {"day": "05-25", "accuracy": 21.41}, {"day": "05-26", "accuracy": 23.21}, {"day": "05-27", "accuracy": 18.53}, {"day": "05-28", "accuracy": 17.47}, {"day": "05-29", "accuracy": 17.72}, {"day": "05-30", "accuracy": 20.07}, {"day": "05-31", "accuracy": 15.85}, {"day": "06-01", "accuracy": 18.69}, {"day": "06-02", "accuracy": 22.29}, {"day": "06-03", "accuracy": 22.69}, {"day": "06-04", "accuracy": 22.07}, {"day": "06-05", "accuracy": 24.59}, {"day": "06-06", "accuracy": 20.57}, {"day": "06-07", "accuracy": 20.0}, {"day": "06-08", "accuracy": 13.86}, {"day": "06-09", "accuracy": 19.66}, {"day": "06-10", "accuracy": 18.1}, {"day": "06-11", "accuracy": 21.24}]}, "登记不规范": {"correct": 0, "incorrect": 4, "total": 4, "accuracy": 0.0, "rule_details": {"16": {"correct": 0, "incorrect": 4, "total": 4, "accuracy": 0.0, "sub": "登记不规范", "desc": "工单处理电话回复客户无人接听时，未联系第二通：当电话回复客户无人接听时，应间隔半小时联系第2次"}}, "monthly": [{"month": "2025-12", "accuracy": 23.03}, {"month": "2026-01", "accuracy": 26.68}, {"month": "2026-02", "accuracy": 17.23}, {"month": "2026-03", "accuracy": 15.33}, {"month": "2026-04", "accuracy": 21.35}, {"month": "2026-06", "accuracy": 15.56}], "daily": [{"day": "05-13", "accuracy": 20.08}, {"day": "05-14", "accuracy": 22.21}, {"day": "05-15", "accuracy": 19.4}, {"day": "05-16", "accuracy": 19.85}, {"day": "05-17", "accuracy": 18.72}, {"day": "05-18", "accuracy": 22.32}, {"day": "05-19", "accuracy": 24.67}, {"day": "05-20", "accuracy": 19.21}, {"day": "05-21", "accuracy": 20.38}, {"day": "05-22", "accuracy": 25.78}, {"day": "05-23", "accuracy": 20.85}, {"day": "05-24", "accuracy": 21.0}, {"day": "05-25", "accuracy": 22.23}, {"day": "05-26", "accuracy": 19.3}, {"day": "05-27", "accuracy": 24.55}, {"day": "05-28", "accuracy": 19.33}, {"day": "05-29", "accuracy": 21.88}, {"day": "05-30", "accuracy": 20.98}, {"day": "05-31", "accuracy": 17.11}, {"day": "06-01", "accuracy": 17.51}, {"day": "06-02", "accuracy": 20.37}, {"day": "06-03", "accuracy": 20.09}, {"day": "06-04", "accuracy": 18.81}, {"day": "06-05", "accuracy": 15.76}, {"day": "06-06", "accuracy": 19.73}, {"day": "06-07", "accuracy": 22.01}, {"day": "06-08", "accuracy": 14.83}, {"day": "06-09", "accuracy": 20.31}, {"day": "06-10", "accuracy": 25.31}, {"day": "06-11", "accuracy": 19.43}]}};
+let filteredData=[...ALL_DATA],currentPage=1,pageSize=20,pageTotal=1,trendMode='daily',currentDrillType=null;
+function init(){populateFilters();applyFilters();renderTypeCards()}
+function populateFilters(){
+  const bs=new Set(),ss=new Set();
+  ALL_DATA.forEach(r=>{if(r['工单大类'])bs.add(r['工单大类']);if(r['工单小类'])ss.add(r['工单小类'])});
+  const bg=document.getElementById('filter_big_category'),sm=document.getElementById('filter_small_category');
+  [...bs].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.text=v;bg.appendChild(o)});
+  [...ss].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.text=v;sm.appendChild(o)})
+}
+function applyFilters(){
+  const as=document.getElementById('filter_ai_qc_start').value,ae=document.getElementById('filter_ai_qc_end').value,cs=document.getElementById('filter_close_start').value,ce=document.getElementById('filter_close_end').value,bc=document.getElementById('filter_big_category').value,sc=document.getElementById('filter_small_category').value,ar=document.getElementById('filter_ai_result').value,rc=document.getElementById('filter_recheck').value;
+  filteredData=ALL_DATA.filter(r=>{if(as&&r['AI质检日期']&&r['AI质检日期']<as)return false;if(ae&&r['AI质检日期']&&r['AI质检日期']>ae)return false;if(cs&&r['工单结办日期']&&r['工单结办日期']<cs)return false;if(ce&&r['工单结办日期']&&r['工单结办日期']>ce)return false;if(bc&&bc!=='全部'&&r['工单大类']!==bc)return false;if(sc&&sc!=='全部'&&r['工单小类']!==sc)return false;if(ar&&ar!=='全部'&&r['AI质检总结果']!==ar)return false;if(rc&&rc!=='全部'&&r['是否复检']!==rc)return false;return true});
+  currentPage=1;pageTotal=Math.ceil(filteredData.length/pageSize)||1;updateKPIs();renderTable();renderPagination()
+}
+function resetFilters(){document.querySelectorAll('.filter-bar select,.filter-bar input[type=date]').forEach(e=>{if(e.tagName==='SELECT')e.value='全部';else e.value=''});applyFilters()}
+function updateKPIs(){
+  const t=filteredData.length,r=filteredData.filter(x=>x['AI质检总结果']==='有责').length,nr=filteredData.filter(x=>x['AI质检总结果']==='无责').length,rc=filteredData.filter(x=>x['是否复检']==='是').length;
+  let sf=0,cf=0,sr=0,cr=0;
+  filteredData.forEach(x=>{const fa=parseFloat(x['首检正确率']),ra=parseFloat(x['复检正确率']);if(!isNaN(fa)){sf+=fa;cf++}if(!isNaN(ra)){sr+=ra;cr++}});
+  document.getElementById('totalCount').textContent=t;document.getElementById('kpiTotal').textContent=t;document.getElementById('kpiResp').textContent=r;document.getElementById('kpiNotResp').textContent=nr;document.getElementById('kpiRecheck').textContent=rc;
+  const now=new Date(),today=now.toISOString().split('T')[0],thisMonth=today.slice(0,7);
+  let fday=0,cfday=0,fmon=0,cfmon=0,rday=0,crday=0,rmon=0,crmon=0;
+  filteredData.forEach(r=>{const d=(r['首检日期']||'').slice(0,10),fa=parseFloat(r['首检正确率']),ra=parseFloat(r['复检正确率']);if(d===today){if(!isNaN(fa)){fday+=fa;cfday++}if(!isNaN(ra)){rday+=ra;crday++}}if(d.slice(0,7)===thisMonth){if(!isNaN(fa)){fmon+=fa;cfmon++}if(!isNaN(ra)){rmon+=ra;crmon++}}});
+  document.getElementById('kpiFirstDay').textContent=cfday?(fday/cfday).toFixed(2)+'%':'-';document.getElementById('kpiFirstMonth').textContent=cfmon?(fmon/cfmon).toFixed(2)+'%':'-';
+  document.getElementById('kpiRecheckDay').textContent=crday?(rday/crday).toFixed(2)+'%':'-';document.getElementById('kpiRecheckMonth').textContent=crmon?(rmon/crmon).toFixed(2)+'%':'-';
+  document.getElementById('displayCount').textContent=t
+}
+function renderTable(){
+  const s=(currentPage-1)*pageSize,p=filteredData.slice(s,s+pageSize),tb=document.getElementById('tableBody');
+  if(!p.length){tb.innerHTML='<tr><td colspan="'+(COLUMNS.length+1)+'" class="no-data">暂无匹配数据</td></tr>';return}
+  tb.innerHTML=p.map((r,i)=>{let c='<td>'+(s+i+1)+'</td>';COLUMNS.forEach(col=>{let v=r[col]||'',cls='';if(col==='AI质检总结果'){if(v==='有责')cls='cell-responsible';else if(v==='无责')cls='cell-not-responsible'}c+='<td class="'+cls+'">'+v+'</td>'});return'<tr>'+c+'</tr>'}).join('')
+}
+function renderPagination(){
+  pageTotal=Math.ceil(filteredData.length/pageSize)||1;document.getElementById('pageNum').textContent=currentPage;document.getElementById('pageTotal').textContent=pageTotal;
+  const bc=document.getElementById('pageBtns');let b='';const mx=5;let s=Math.max(1,currentPage-Math.floor(mx/2)),e=Math.min(pageTotal,s+mx-1);if(e-s<mx-1)s=Math.max(1,e-mx+1);
+  for(let p=s;p<=e;p++)b+='<button class="'+(p===currentPage?'active':'')+'" onclick="goPage('+p+')">'+p+'</button>';bc.innerHTML=b
+}
+function goPage(p){if(p<1||p>pageTotal)return;currentPage=p;renderTable();renderPagination()}
+function changePageSize(s){pageSize=parseInt(s);currentPage=1;pageTotal=Math.ceil(filteredData.length/pageSize)||1;renderTable();renderPagination()}
+function exportExcel(){
+  let h='<tr>'+COLUMNS.map(c=>'<th>'+c+'</th>').join('')+'</tr>',body='';filteredData.forEach((r,i)=>{body+='<tr>'+COLUMNS.map(c=>'<td>'+(r[c]||'')+'</td>').join('')+'</tr>'});
+  const bl=new Blob(['<html><head><meta charset="UTF-8"></head><body><table>'+h+body+'</table></body></html>'],{type:'application/vnd.ms-excel'}),u=URL.createObjectURL(bl),a=document.createElement('a');a.href=u;a.download='AI质检工单准确率明细表_'+new Date().toISOString().slice(0,10)+'.xls';a.click();URL.revokeObjectURL(u)
+}
+function renderTypeCards(){
+  currentDrillType=null;document.getElementById('backBtn').style.display='none';document.getElementById('ruleCardArea').style.display='none';document.getElementById('trendArea').style.display='none'
+  const types=Object.keys(TYPE_STATS).sort(),bs=['#4f8cf7','#5b9df5','#689fdf','#7ab4f7'];
+  let cards='';types.forEach((t,i)=>{
+    const d=TYPE_STATS[t],rls=Object.entries(d.rule_details).sort((a,b)=>((b[1].accuracy||0)-(a[1].accuracy||0)));
+    let rts='';rls.forEach(([rid,rd])=>{
+      const acc=rd.total>0&&rd.accuracy!=null?rd.accuracy:null;
+      const ac=acc!=null?(acc>=80?'#43a86e':(acc>=60?'#d97706':'#e05353')):'#94a3b8';
+      const at=acc!=null?acc+'%':'无';
+      rts+='<span>规则'+rid+' <b style="color:'+ac+'">'+at+'</b></span>';
+    });
+    cards+='<div class="tc" onclick="drillCards(\''+t+'\')" style="--tc:'+bs[i%4]+'"><div class="tcn">'+t+'<span class="tci-detail-btn" onclick="event.stopPropagation();showRules(\''+t+'\')">规则明细</span></div><div class="tca" style="color:'+bs[i%4]+'">'+d.accuracy+'%</div><div class="tcd">'+d.correct+'/'+d.total+' 正确 | '+rls.length+'条规则</div><div class="tcr">'+rts+'</div></div>';
+  });
+  document.getElementById('typeCardGrid').innerHTML=cards
+}
+function drillCards(type){
+  currentDrillType=type;document.getElementById('backBtn').style.display='inline';document.getElementById('ruleCardArea').style.display='none';
+  const d=TYPE_STATS[type];if(!d)return;
+  document.getElementById('trendArea').style.display='block';
+  document.getElementById('trendArea').innerHTML='<div class="trend-wrap"><h4>'+type+' - 趋势图<span class="trend-toggle"><button id="btnDaily" class="active" onclick="switchTrend(\'daily\')">日度</button><button id="btnMonthly" onclick="switchTrend(\'monthly\')">月度</button></span></h4><canvas id="trendChart" height="100"></canvas></div>';
+  trendMode='daily';renderTrend(type)
+}
+function switchTrend(mode){trendMode=mode;document.getElementById('btnDaily').className=mode==='daily'?'active':'';document.getElementById('btnMonthly').className=mode==='monthly'?'active':'';if(currentDrillType)renderTrend(currentDrillType)}
+let trendChart=null;
+const trendLabelPlugin={id:'trendLabels',afterDatasetsDraw(c){const ctx=c.ctx;c.data.datasets.forEach((ds,i)=>{const m=c.getDatasetMeta(i);m.data.forEach((pt,idx)=>{ctx.fillStyle='#334155';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(ds.data[idx]+'%',pt.x,pt.y-6)})})}};
+function renderTrend(type){
+  const d=TYPE_STATS[type];if(!d)return;if(trendChart)trendChart.destroy();
+  const data=trendMode==='daily'?d.daily:d.monthly,labels=trendMode==='daily'?data.map(x=>x.day):data.map(x=>x.month);
+  trendChart=new Chart(document.getElementById('trendChart'),{
+    type:'line',data:{labels:labels,datasets:[{label:'准确率(%)',data:data.map(x=>x.accuracy),borderColor:'#5b9df5',backgroundColor:'rgba(79,140,247,0.08)',fill:true,tension:0.3,pointRadius:3,borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:0,max:120,ticks:{callback:v=>v+'%'}}}},
+    plugins:[trendLabelPlugin]
+  })
+}
+function showRules(type){
+  const d=TYPE_STATS[type];if(!d)return;
+  const entries=Object.entries(d.rule_details).sort((a,b)=>((b[1].accuracy||0)-(a[1].accuracy||0)));
+  let rcs='';entries.forEach(([rid,rd])=>{
+    const acc=rd.total>0&&rd.accuracy!=null?rd.accuracy:null,ac=acc!=null?(acc>=80?'#43a86e':(acc>=60?'#d9a534':'#e05353')):'#94a3b8',at=acc!=null?acc+'%':'无数据';
+    rcs+='<div class="rc"><div class="rc-badge"><span>规则'+rid+'</span></div><div class="rc-body"><div class="rc-sub">'+rd.sub+'</div><div class="rc-desc">'+rd.desc+'</div><div class="rc-stats">正确:'+rd.correct+' | 错误:'+rd.incorrect+' | 总计:'+rd.total+'</div></div><div class="rc-acc"><div class="rc-pct" style="color:'+ac+'">'+at+'</div><div class="rc-label">准确率</div></div></div>';
+  });
+  document.getElementById('ruleCardArea').style.display='block';
+  document.getElementById('ruleCardArea').innerHTML='<div class="rules-wrap"><h4>'+type+' - 规则明细 ('+entries.length+'条)</h4>'+rcs+'</div>';
+  document.getElementById('trendArea').style.display='none';
+  document.getElementById('backBtn').style.display='inline';
+  currentDrillType=type
+}
+function showAccTrend(type,mode){
+  const col=type==='首检'?'首检正确率':'复检正确率';
+  const dateCol=type==='首检'?'首检日期':'复检日期';
+  const groups={};
+  ALL_DATA.forEach(r=>{const d=(r[dateCol]||'').slice(0,mode==='daily'?10:7);const v=parseFloat(r[col]);if(d&&!isNaN(v)){if(!groups[d])groups[d]={sum:0,cnt:0};groups[d].sum+=v;groups[d].cnt++}});
+  const keys=Object.keys(groups).sort();
+  const data=keys.map(k=>({label:mode==='daily'?k.slice(5):k,accuracy:parseFloat((groups[k].sum/groups[k].cnt).toFixed(2))}));
+  document.getElementById('backBtn').style.display='inline';currentDrillType=null;
+  document.getElementById('ruleCardArea').style.display='none';
+  document.getElementById('trendArea').style.display='block';
+  const title=type+'正确率 - '+(mode==='daily'?'日度趋势':'月度趋势');
+  document.getElementById('trendArea').innerHTML='<div class="trend-wrap"><h4>'+title+'</h4><canvas id="trendChart" height="100"></canvas></div>';
+  if(trendChart)trendChart.destroy();
+  const labels=data.map(x=>x.label);
+  trendChart=new Chart(document.getElementById('trendChart'),{type:'line',data:{labels:labels,datasets:[{label:'准确率(%)',data:data.map(x=>x.accuracy),borderColor:'#5b9df5',backgroundColor:'rgba(79,140,247,0.08)',fill:true,tension:0.3,pointRadius:3,borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:0,max:120,ticks:{callback:v=>v+'%'}}}},plugins:[trendLabelPlugin]});
+}
+function goBack(){renderTypeCards()}
+init();
+</script>
+</body></html>
