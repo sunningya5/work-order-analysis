@@ -1,4 +1,6 @@
 __pycache__/
 *.pyc
 .claude/
-deploy.py deploy_type.py analysis_stats.json
+deploy.py
+deploy_type.py
+analysis_stats.json
